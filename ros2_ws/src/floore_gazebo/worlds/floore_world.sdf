@@ -113,12 +113,6 @@
           <property key="showTitleBar" type="bool">false</property>
         </gz-gui>
       </plugin>
-      <!-- Browse/insert new Fuel or local models straight into the scene -->
-      <plugin filename="ResourceSpawner" name="Resource Spawner">
-        <gz-gui>
-          <property type="string" key="state">docked</property>
-        </gz-gui>
-      </plugin>
       <plugin filename="ComponentInspector" name="Component inspector">
         <gz-gui>
           <property type="string" key="state">docked</property>
