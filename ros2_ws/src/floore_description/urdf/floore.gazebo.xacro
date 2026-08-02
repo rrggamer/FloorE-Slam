@@ -25,6 +25,45 @@
     </plugin>
   </gazebo>
 
+  <!-- URDF <material><color> above covers RViz; gz-sim needs its own
+       copy since sdformat's URDF->SDF conversion doesn't reliably carry
+       the URDF material color through to the render engine. -->
+  <gazebo reference="base_link">
+    <material>
+      <ambient>${chassis_color_rgba}</ambient>
+      <diffuse>${chassis_color_rgba}</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+    </material>
+  </gazebo>
+  <gazebo reference="front_left_wheel_link">
+    <material>
+      <ambient>${wheel_color_rgba}</ambient>
+      <diffuse>${wheel_color_rgba}</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+    </material>
+  </gazebo>
+  <gazebo reference="front_right_wheel_link">
+    <material>
+      <ambient>${wheel_color_rgba}</ambient>
+      <diffuse>${wheel_color_rgba}</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+    </material>
+  </gazebo>
+  <gazebo reference="rear_left_wheel_link">
+    <material>
+      <ambient>${wheel_color_rgba}</ambient>
+      <diffuse>${wheel_color_rgba}</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+    </material>
+  </gazebo>
+  <gazebo reference="rear_right_wheel_link">
+    <material>
+      <ambient>${wheel_color_rgba}</ambient>
+      <diffuse>${wheel_color_rgba}</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+    </material>
+  </gazebo>
+
   <!-- 2D LiDAR. type=gpu_lidar requires the world-level Sensors system
        plugin (added in the world SDF, not here) to actually produce data. -->
   <gazebo reference="lidar_link">
