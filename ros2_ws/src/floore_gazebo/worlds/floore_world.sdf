@@ -2,6 +2,135 @@
 <sdf version="1.10">
   <world name="floore_world">
 
+    <!--
+      Defining a <gui> block replaces gz-sim's default GUI plugin set
+      entirely (it doesn't merge with it), so everything normally present,
+      including the 3D view, view controls, world control/stats, entity
+      tree, and inspector, has to be listed explicitly here too, alongside
+      the one we actually wanted: VisualizeLidar draws the scan rays in
+      the 3D view. Without it the sensor still runs and publishes /scan
+      correctly, there's just no ray overlay in the Gazebo window itself.
+    -->
+    <gui fullscreen="0">
+      <plugin filename="MinimalScene" name="3D View">
+        <gz-gui>
+          <title>3D View</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+        <engine>ogre2</engine>
+        <scene>scene</scene>
+        <ambient_light>0.4 0.4 0.4</ambient_light>
+        <background_color>0.8 0.8 0.8</background_color>
+        <camera_pose>-3 -3 3 0 0.3 0.78</camera_pose>
+      </plugin>
+      <plugin filename="EntityContextMenuPlugin" name="Entity context menu">
+        <gz-gui>
+          <property key="state" type="string">floating</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+      <plugin filename="GzSceneManager" name="Scene Manager">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+      <plugin filename="InteractiveViewControl" name="Interactive view control">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+      <plugin filename="CameraTracking" name="Camera Tracking">
+        <gz-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+      <plugin filename="WorldControl" name="World control">
+        <gz-gui>
+          <title>World control</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">72</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="left" target="left"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <play_pause>true</play_pause>
+        <step>true</step>
+        <start_paused>false</start_paused>
+        <use_event>true</use_event>
+      </plugin>
+      <plugin filename="WorldStats" name="World stats">
+        <gz-gui>
+          <title>World stats</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">110</property>
+          <property type="double" key="width">290</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="right" target="right"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </gz-gui>
+        <sim_time>true</sim_time>
+        <real_time>true</real_time>
+        <real_time_factor>true</real_time_factor>
+        <iterations>true</iterations>
+      </plugin>
+      <plugin filename="VisualizeLidar" name="Visualize Lidar">
+      </plugin>
+      <!-- Drag the gizmo on a selected object to move/rotate it -->
+      <plugin filename="TransformControl" name="Transform control">
+        <gz-gui>
+          <title>Transform control</title>
+          <anchors target="3D View">
+            <line own="left" target="left"/>
+            <line own="top" target="top"/>
+          </anchors>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">230</property>
+          <property key="height" type="double">50</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </gz-gui>
+      </plugin>
+      <!-- Browse/insert new Fuel or local models straight into the scene -->
+      <plugin filename="ResourceSpawner" name="Resource Spawner">
+        <gz-gui>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+      </plugin>
+      <plugin filename="ComponentInspector" name="Component inspector">
+        <gz-gui>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+      </plugin>
+      <plugin filename="EntityTree" name="Entity tree">
+        <gz-gui>
+          <property type="string" key="state">docked</property>
+        </gz-gui>
+      </plugin>
+    </gui>
+
     <physics name="1ms" type="ignored">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
@@ -65,6 +194,75 @@
         </collision>
       </link>
     </model>
+
+    <!--
+      Furniture pulled from the Gazebo Fuel OpenRobotics collection (free,
+      no local meshes needed, gz-sim downloads and caches each model on
+      first load). Positions are placed using each model's actual
+      downloaded-mesh bounding box (measured with trimesh after the first
+      load, since the first attempt at this without real dimensions
+      caused overlapping-collision ODE warnings): dining table
+      1.0x2.35x0.74m, dining chair 0.43x0.54x0.96m, office desk
+      0.87x2.26x1.22m, office chair 0.90x0.86x1.10m, sofa 1.8x1.04x0.94m,
+      coffee table 0.73x0.73x0.37m (post-scale). Gaps below are sized
+      with real margin against those, not guessed.
+    -->
+
+    <!-- spawn room (x:0-16, y:0-6); table rotated 90 deg so its long
+         (2.35m) axis runs along the room's long X dimension -->
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Dining Table</uri>
+      <name>dining_table</name>
+      <pose>15 13 0.5 0 0 1.5708</pose>
+    </include>
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Dining Chair</uri>
+      <name>dining_chair_1</name>
+      <pose>13 13 0.5 0 0 1.5708</pose>
+    </include>
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Dining Chair</uri>
+      <name>dining_chair_2</name>
+      <pose>17.0 13 0.5 0 0 -1.5708</pose>
+    </include>
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Sofa</uri>
+      <name>sofa</name>
+      <pose>1.5 4.2 0.5 0 0 4.71239</pose>
+    </include>
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/CoffeeTable</uri>
+      <name>coffee_table</name>
+      <pose>3 4.3 0.5 0 0 0</pose>
+    </include>
+
+    <!-- left room (x:0-5, y:10-20) -->
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Office Desk</uri>
+      <name>office_desk</name>
+      <pose>3.2 15 0.5 0 0 -1.570800</pose>
+    </include>
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Office Chair</uri>
+      <name>office_chair</name>
+      <pose>2.5 14 0.5 0 0 -1.5708</pose>
+    </include>
+
+    <include>
+      <uri>
+      https://fuel.gazebosim.org/1.0/OpenRobotics/models/Bed
+      </uri>
+      <name>bed</name>
+      <pose>22 18 0.5 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>
+      https://fuel.gazebosim.org/1.0/OpenRobotics/models/Sofa
+      </uri>
+      <name>sofa_tv</name>
+      <pose>25 18 1.5 0 0 -1.5708</pose>
+    </include>
 
   </world>
 </sdf>

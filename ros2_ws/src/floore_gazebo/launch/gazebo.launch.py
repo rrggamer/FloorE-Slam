@@ -67,6 +67,25 @@ def generate_launch_description():
         output="screen",
     )
 
+    # lidar_joint is a fixed joint, so gz-sim/dartsim welds lidar_link into
+    # base_link at load time (confirmed via `gz model -m floore -l`: the
+    # lidar sensor shows up directly under base_link, no separate
+    # lidar_link entity exists at runtime). That changes the LaserScan
+    # message's frame_id to the scoped "floore/base_link/lidar" instead of
+    # "lidar_link", which robot_state_publisher's TF tree has no entry for
+    # -- RViz then reports the frame as missing. Bridging the two names
+    # with the sensor's own known offset (from floore.urdf.xacro's
+    # lidar_x/y/z) fixes it without fighting the welding behavior.
+    lidar_frame_bridge = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        arguments=[
+            "--x", "0.033635", "--y", "0.0", "--z", "0.75618",
+            "--frame-id", "base_link", "--child-frame-id", "floore/base_link/lidar",
+        ],
+        output="screen",
+    )
+
     return LaunchDescription(
         [
             set_resource_path,
@@ -74,5 +93,6 @@ def generate_launch_description():
             robot_state_publisher,
             spawn_robot,
             bridge,
+            lidar_frame_bridge,
         ]
     )

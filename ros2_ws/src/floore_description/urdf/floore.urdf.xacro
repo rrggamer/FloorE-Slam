@@ -3,53 +3,58 @@
 
   <!-- ============================================================
        Dimensions
-       "measured" values come from the bounding box of the actual
-       STL mesh (meshes/collision/*.STL, computed after the Z-up/
-       X-front fix). "placeholder" values are NOT in the per-part
-       STL data (wheel/chassis assembly mates only exist in the
-       SolidWorks assembly, not in the individual part exports).
-       Verify these against the real assembly and correct them
-       before trusting odometry / collision behavior.
+       All measured directly from meshes/collision/Chassis.STL and
+       wheel_*.STL, which are now exported from the SolidWorks
+       ASSEMBLY (Robot.SLDASM) with "save each component as a
+       separate file", so all five meshes share one common,
+       already-correct assembly frame, so no per-part recentering or
+       mirroring needed, unlike the earlier per-part-only export.
        ============================================================ -->
 
   <!-- SolidWorks STL export units are mm; URDF/Gazebo use meters -->
   <xacro:property name="mesh_scale" value="0.001 0.001 0.001"/>
 
-  <!-- measured: Wheel.STL bounding box -> diameter ~225.7mm, width 51mm -->
+  <!-- measured: wheel_*.STL bounding box -> diameter ~225.7mm, width 51mm -->
   <xacro:property name="wheel_radius" value="0.1128"/>
   <xacro:property name="wheel_width" value="0.051"/>
-  <!-- measured: Wheel.STL local origin sits at a corner of its bbox, not
-       the disc center/axle, so this offset re-centers the mesh on the
-       joint so the wheel doesn't render/collide shifted off its axle -->
-  <xacro:property name="wheel_mesh_off_x" value="-0.11340"/>
-  <xacro:property name="wheel_mesh_off_y" value="-0.02561"/>
-  <xacro:property name="wheel_mesh_off_z" value="-0.11399"/>
 
-  <!-- measured: Chassis.STL bounding box (its own origin sits ~at the
-       bottom corner of the bbox, so base_link below is left at that
-       same native origin rather than re-centered) -->
-  <xacro:property name="chassis_length_x" value="0.4948"/>
-  <xacro:property name="chassis_width_y" value="0.4316"/>
-  <xacro:property name="chassis_height_z" value="0.6027"/>
+  <!-- measured: Chassis.STL bounding box, in the shared assembly frame -->
+  <xacro:property name="chassis_x_min" value="-0.21378"/>
+  <xacro:property name="chassis_x_max" value="0.28105"/>
+  <xacro:property name="chassis_y_min" value="-0.21582"/>
+  <xacro:property name="chassis_y_max" value="0.21582"/>
+  <xacro:property name="chassis_z_min" value="0.15349"/>
+  <xacro:property name="chassis_z_max" value="0.75618"/>
 
-  <!-- PLACEHOLDER: not derivable from per-part STLs; measure on the
-       real robot / SolidWorks assembly and update -->
-  <xacro:property name="wheelbase" value="0.40"/>
-  <xacro:property name="track_width" value="0.36"/>
-  <xacro:property name="wheel_z" value="${wheel_radius}"/>
+  <!-- measured: average wheel-center position per axle/side, same
+       assembly frame as the chassis above (see wheel_*.STL bounding
+       boxes: front wheels share one X, rear wheels share another;
+       left wheels share one Y, right wheels share another) -->
+  <xacro:property name="wheel_front_x" value="0.123053"/>
+  <xacro:property name="wheel_rear_x" value="-0.176977"/>
+  <xacro:property name="wheel_left_y" value="0.185500"/>
+  <xacro:property name="wheel_right_y" value="-0.185500"/>
+  <xacro:property name="wheel_z" value="0.163165"/>
 
-  <!-- PLACEHOLDER: lidar mount point, currently just top-center of the
-       chassis bounding box. No lidar CAD/mesh exists yet so this is a
+  <!-- derived, for reference and for the DiffDrive plugin's
+       wheel_separation parameter (see floore.gazebo.xacro) -->
+  <xacro:property name="wheelbase" value="${wheel_front_x - wheel_rear_x}"/>
+  <xacro:property name="track_width" value="${wheel_left_y - wheel_right_y}"/>
+
+  <!-- PLACEHOLDER: lidar mount point, top-center of the chassis
+       bounding box. No lidar CAD/mesh exists yet so this is a
        primitive stand-in -->
-  <xacro:property name="lidar_x" value="${chassis_length_x/2}"/>
-  <xacro:property name="lidar_y" value="${chassis_width_y/2}"/>
-  <xacro:property name="lidar_z" value="${chassis_height_z}"/>
+  <xacro:property name="lidar_x" value="${(chassis_x_min + chassis_x_max) / 2}"/>
+  <xacro:property name="lidar_y" value="${(chassis_y_min + chassis_y_max) / 2}"/>
+  <xacro:property name="lidar_z" value="${chassis_z_max}"/>
 
   <xacro:property name="chassis_mass" value="8.0"/>
   <xacro:property name="wheel_mass" value="0.3"/>
 
   <!-- ============================================================
-       base_link / chassis
+       base_link / chassis. base_link IS the chassis mesh's native
+       assembly-frame origin, not recentered, so every joint below is
+       just that same wheel's measured assembly-frame position.
        ============================================================ -->
   <link name="base_link">
     <visual>
@@ -66,32 +71,29 @@
     </collision>
     <inertial>
       <mass value="${chassis_mass}"/>
-      <origin xyz="${chassis_length_x/2} ${chassis_width_y/2} ${chassis_height_z/2}" rpy="0 0 0"/>
+      <origin xyz="${lidar_x} ${lidar_y} ${(chassis_z_min + chassis_z_max) / 2}" rpy="0 0 0"/>
       <inertia ixx="0.20" ixy="0.0" ixz="0.0" iyy="0.25" iyz="0.0" izz="0.30"/>
     </inertial>
   </link>
 
   <!-- ============================================================
-       Wheel macro, fl/fr/rl/rr, mirrored about X (front/rear) and
-       Y (left/right). Wheel joint axis is Y: confirmed by the mesh
-       bbox (X-extent == Z-extent, Y is the thin tread width), so the
-       wheel already spins about Y with no extra mesh rotation needed.
+       Wheel macro, fl/fr/rl/rr. Each wheel has its own mesh file,
+       already positioned and oriented correctly for its own corner
+       by the assembly export, so the only per-instance data needed
+       is which mesh to load and where its measured center sits (the
+       joint origin below IS that wheel's assembly-frame center; the
+       visual's origin is the exact negative, so placing the link at
+       the joint and then drawing the mesh at -center reconstructs
+       the mesh's original absolute position).
+       Wheel joint axis is Y: confirmed by the mesh bbox (X-extent ==
+       Z-extent, Y is the thin tread width).
        ============================================================ -->
-  <xacro:macro name="wheel" params="prefix x_sign y_sign">
-    <!--
-      Wheel.STL was modeled as a single (right-side) wheel, so it's
-      correct as-is for y_sign=-1 but needs mirroring across its own Y
-      plane for the left side (y_sign=1). Mirroring, not a rotation,
-      is what's needed here since the hub/tread detail must face
-      inward on both sides; a negative Y scale mirrors the mesh, and
-      the recentering offset has to flip sign along with it or the
-      mirrored copy ends up off-center from the joint again.
-    -->
+  <xacro:macro name="wheel" params="prefix mesh_file x y z">
     <link name="${prefix}_wheel_link">
       <visual>
-        <origin xyz="${wheel_mesh_off_x} ${wheel_mesh_off_y*(-1*y_sign)} ${wheel_mesh_off_z}" rpy="0 0 0"/>
+        <origin xyz="${-x} ${-y} ${-z}" rpy="0 0 0"/>
         <geometry>
-          <mesh filename="package://floore_description/meshes/collision/Wheel.STL" scale="0.001 ${0.001*(-1*y_sign)} 0.001"/>
+          <mesh filename="package://floore_description/meshes/collision/${mesh_file}" scale="${mesh_scale}"/>
         </geometry>
       </visual>
       <collision>
@@ -110,15 +112,15 @@
     <joint name="${prefix}_wheel_joint" type="continuous">
       <parent link="base_link"/>
       <child link="${prefix}_wheel_link"/>
-      <origin xyz="${chassis_length_x/2 + x_sign*wheelbase/2} ${chassis_width_y/2 + y_sign*track_width/2} ${wheel_z}" rpy="0 0 0"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
       <axis xyz="0 1 0"/>
     </joint>
   </xacro:macro>
 
-  <xacro:wheel prefix="front_left"  x_sign="1"  y_sign="1"/>
-  <xacro:wheel prefix="front_right" x_sign="1"  y_sign="-1"/>
-  <xacro:wheel prefix="rear_left"   x_sign="-1" y_sign="1"/>
-  <xacro:wheel prefix="rear_right"  x_sign="-1" y_sign="-1"/>
+  <xacro:wheel prefix="front_left"  mesh_file="wheel_front_left.STL"  x="${wheel_front_x}" y="${wheel_left_y}"  z="${wheel_z}"/>
+  <xacro:wheel prefix="front_right" mesh_file="wheel_front_right.STL" x="${wheel_front_x}" y="${wheel_right_y}" z="${wheel_z}"/>
+  <xacro:wheel prefix="rear_left"   mesh_file="wheel_rear_left.STL"   x="${wheel_rear_x}"  y="${wheel_left_y}"  z="${wheel_z}"/>
+  <xacro:wheel prefix="rear_right"  mesh_file="wheel_rear_right.STL" x="${wheel_rear_x}"  y="${wheel_right_y}" z="${wheel_z}"/>
 
   <!-- ============================================================
        LiDAR (no CAD mesh yet, placeholder cylinder)
