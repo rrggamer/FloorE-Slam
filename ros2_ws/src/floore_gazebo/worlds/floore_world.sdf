@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <world name="floore_world">
+
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!--
+      Map.STL is the environment (floor + walls), exported in mm, scaled
+      down 1:1000 here to meters. Loaded via GZ_SIM_RESOURCE_PATH pointing
+      at the floore_description share dir (set in gazebo.launch.py) so
+      this world doesn't need to know the actual install path.
+    -->
+    <model name="floor_environment">
+      <static>true</static>
+      <link name="map_link">
+        <visual name="map_visual">
+          <geometry>
+            <mesh>
+              <uri>model://floore_description/meshes/collision/Map.STL</uri>
+              <scale>0.001 0.001 0.001</scale>
+            </mesh>
+          </geometry>
+          <!--
+            The floor face's normals are inverted in the STL itself (measured
+            directly on the mesh: triangles near Z=0 have their normal
+            pointing -Z, i.e. away from the room, while the wall-top
+            triangles near Z=5m correctly point +Z). Ogre2 backface-culls
+            single-sided geometry by default, so the floor was either
+            invisible or lit wrong. double_sided renders it regardless of
+            which way the normal points; fix the normal in SolidWorks and
+            re-export if you want to drop this workaround later.
+          -->
+          <material>
+            <ambient>0.6 0.6 0.6 1</ambient>
+            <diffuse>0.7 0.7 0.7 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+            <double_sided>true</double_sided>
+          </material>
+        </visual>
+        <collision name="map_collision">
+          <geometry>
+            <mesh>
+              <uri>model://floore_description/meshes/collision/Map.STL</uri>
+              <scale>0.001 0.001 0.001</scale>
+            </mesh>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+  </world>
+</sdf>
