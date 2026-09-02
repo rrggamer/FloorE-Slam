@@ -19,14 +19,24 @@ CAPTURE_DIR = "captures"
 # ====== WORLD Class =======
 
 class MCLWorld:
-    def __init__(self, size=WORLD_SIZE, seed=SEED):
+    def __init__(self, size=WORLD_SIZE, seed=SEED, n_landmark=N_LANDMARK):
         self.size = float(size)
         self.rng = np.random.default_rng(seed)
         self.bounds = np.array([0.0, self.size, 0.0, self.size])
 
+        
+        self.landmarks = self.spawn_landmarks(n_landmark)
+
     @property
     def area(self):
         return self.size * self.size     # square metres
+
+    def spawn_landmarks(self, n):
+        """Return an (n, 2) array of random (x, y) landmark positions."""
+        x_min, x_max, y_min, y_max = self.bounds
+        xs = self.rng.uniform(x_min, x_max, size=n)
+        ys = self.rng.uniform(y_min, y_max, size=n)
+        return np.column_stack([xs, ys])
 
 # ==========================
 
@@ -57,14 +67,29 @@ class MCLViz:
         ax.set_yticks(np.arange(y_min, y_max + 1, 1))
         ax.grid(True, linestyle='--', alpha=0.4)
 
+        self.draw_landmarks(ax)
+
         ax.set_xlabel("X (m)")
         ax.set_ylabel("Y (m)")
         ax.set_title(
             f"World  {self.w.size:.0f} x {self.w.size:.0f} m  "
-            f"(area = {self.w.area:.0f} m^2)"
+            f"(area = {self.w.area:.0f} m^2, landmarks = {len(self.w.landmarks)})"
         )
+        ax.legend(loc="upper right")
 
         return fig, ax
+
+    def draw_landmarks(self, ax):
+        lm = self.w.landmarks
+        ax.scatter(
+            lm[:, 0], lm[:, 1],
+            marker="s", s=180, color="tab:red",
+            edgecolors="black", linewidths=0.6, zorder=5,
+            label="landmark",
+        )
+        #for i, (x, y) in enumerate(lm):
+        #    ax.annotate(f"L{i}", (x, y), textcoords="offset points",
+        #                xytext=(6, 6), fontsize=8)
 
     def capture(self, name, show=False):
         fig, _ = self.draw_world()
@@ -86,9 +111,12 @@ def main():
     print("WORLD_SIZE:", world.size, "m")
     print("BOUNDS:", world.bounds.tolist(), "[x_min, x_max, y_min, y_max]")
     print("AREA:", world.area, "m^2")
+    print("N_LANDMARK:", len(world.landmarks))
+    for i, (x, y) in enumerate(world.landmarks):
+        print(f"  L{i:<2d} = ({x:6.3f}, {y:6.3f})")
 
     viz = MCLViz(world)
-    out = viz.capture("step1_world.png", show=True)
+    out = viz.capture("step2_landmarks.png", show=True)
     print("CAPTURE:", out)
 
 
