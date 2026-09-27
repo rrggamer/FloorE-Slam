@@ -5,11 +5,33 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable
+from launch.actions import (
+    IncludeLaunchDescription,
+    SetEnvironmentVariable,
+    UnsetEnvironmentVariable,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+
+# If this is launched from a snap-packaged terminal (e.g. VSCode's built-in
+# terminal, which ships as a snap), these env vars point at the terminal
+# app's own bundled GTK/libc, not the system ones. gz sim's GUI inherits
+# them, dlopens a GTK module from inside that snap, and crashes with
+# "libpthread.so.0: undefined symbol: __libc_pthread_init, version
+# GLIBC_PRIVATE" -- a glibc-version clash between the snap's bundled libc
+# and the host's. Server-only mode never hits this (no GUI/GTK loading), so
+# it's only visible with gz_args="-r ...". Unsetting them here has no
+# effect outside a snap-confined shell.
+_SNAP_GUI_ENV_VARS = [
+    "SNAP", "SNAP_LIBRARY_PATH", "SNAP_NAME", "SNAP_REVISION", "SNAP_ARCH",
+    "SNAP_INSTANCE_NAME", "SNAP_UID", "SNAP_EUID", "SNAP_CONTEXT", "SNAP_COOKIE",
+    "SNAP_REAL_HOME", "SNAP_USER_COMMON", "SNAP_USER_DATA", "SNAP_DATA",
+    "SNAP_COMMON", "SNAP_VERSION", "SNAP_LAUNCHER_ARCH_TRIPLET",
+    "GTK_PATH", "GTK_EXE_PREFIX", "GDK_PIXBUF_MODULE_FILE", "GDK_PIXBUF_MODULEDIR",
+    "GIO_MODULE_DIR", "GTK_IM_MODULE_FILE", "LOCPATH",
+]
 
 
 def generate_launch_description():
@@ -34,6 +56,10 @@ def generate_launch_description():
     set_resource_path = SetEnvironmentVariable(
         name="GZ_SIM_RESOURCE_PATH", value=resource_path
     )
+
+    unset_snap_gui_vars = [
+        UnsetEnvironmentVariable(name) for name in _SNAP_GUI_ENV_VARS if name in os.environ
+    ]
 
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -89,6 +115,7 @@ def generate_launch_description():
     return LaunchDescription(
         [
             set_resource_path,
+            *unset_snap_gui_vars,
             gz_sim,
             robot_state_publisher,
             spawn_robot,
