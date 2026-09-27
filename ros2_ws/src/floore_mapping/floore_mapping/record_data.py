@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Record synchronized (odom pose, lidar scan) pairs to a CSV file, in the
-same row layout as the CoppeliaSim vrep-OCGM assignment's
+"""Record synchronized (ground-truth pose, lidar scan) pairs to a CSV file,
+in the same row layout as the CoppeliaSim vrep-OCGM assignment's
 save_laser_show_pointcloud.py:
 
     col 0        = x position of the sensor base (odom frame)
@@ -9,8 +9,16 @@ save_laser_show_pointcloud.py:
     col 3+2*i    = range of ray i (meters)
     col 4+2*i    = angle of ray i relative to the sensor's forward axis (radians)
 
-/odom (30 Hz) and /scan (10 Hz) are bridged from Gazebo by floore_gazebo's
-launch file, so this only needs to run alongside it -- see
+Subscribes /ground_truth, not /odom: /odom is the DiffDrive plugin's
+wheel-kinematic *estimate* and drifts over a long run (the same wall ends
+up mapped at several different places/angles); /ground_truth is published
+by the OdometryPublisher system plugin (floore.gazebo.xacro) straight from
+the model's actual physics pose each frame, so it can't drift -- the
+Gazebo equivalent of the CoppeliaSim assignment's
+sim.getObjectPosition()/sim.getObjectOrientation().
+
+/ground_truth (30 Hz) and /scan (10 Hz) are bridged from Gazebo by
+floore_gazebo's launch file, so this only needs to run alongside it -- see
 floore_mapping/launch/record.launch.py.
 """
 import csv
@@ -37,14 +45,14 @@ class ScanRecorder(Node):
         self._writer = csv.writer(self._file)
         self._count = 0
 
-        odom_sub = message_filters.Subscriber(self, Odometry, "/odom")
+        odom_sub = message_filters.Subscriber(self, Odometry, "/ground_truth")
         scan_sub = message_filters.Subscriber(self, LaserScan, "/scan")
         self._sync = message_filters.ApproximateTimeSynchronizer(
             [odom_sub, scan_sub], queue_size=30, slop=0.1
         )
         self._sync.registerCallback(self._callback)
 
-        self.get_logger().info(f"Recording synchronized /odom + /scan to {out_path}")
+        self.get_logger().info(f"Recording synchronized /ground_truth + /scan to {out_path}")
 
     def _callback(self, odom, scan):
         x = odom.pose.pose.position.x
@@ -80,7 +88,8 @@ def main():
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":

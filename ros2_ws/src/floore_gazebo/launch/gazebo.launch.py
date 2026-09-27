@@ -79,6 +79,13 @@ def generate_launch_description():
         parameters=[{"robot_description": robot_description, "use_sim_time": True}],
     )
 
+    # z=2.0: the robot free-falls onto the floor at spawn, which has been
+    # observed to occasionally land it hard enough to flip over (confirmed
+    # via /ground_truth pose logging in one run). Dropping to z=0.06 (the
+    # robot's actual wheel clearance) avoided that in testing, but visibly
+    # clips the wheels into the floor mesh instead, so this is being kept at
+    # 2.0 -- if a fall ever lands it wrong, just relaunch, or nudge it
+    # upright with `gz service` before driving.
     spawn_robot = Node(
         package="ros_gz_sim",
         executable="create",
